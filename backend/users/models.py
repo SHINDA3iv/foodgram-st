@@ -1,22 +1,32 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 
 class User(AbstractUser):
     """Кастомная модель пользователя"""
-    email = models.EmailField(
-        'Email адрес',
-        max_length=254,
-        unique=True,
-        help_text='Обязательное поле'
+    username_validator = RegexValidator(
+        regex=r'^[\w.@+-]+$',
+        message='Введите корректное имя пользователя. Может содержать только буквы, цифры и символы @/./+/-/_'
     )
-    first_name = models.CharField('Имя', max_length=150)
-    last_name = models.CharField('Фамилия', max_length=150)
+    email = models.EmailField(
+        verbose_name='Адрес электронной почты',
+        max_length=254,
+        unique=True
+    )
+    username = models.CharField(
+        verbose_name='Уникальный юзернейм',
+        max_length=150,
+        unique=True,
+        validators=[username_validator]
+    )
+    first_name = models.CharField(verbose_name='Имя', max_length=150)
+    last_name = models.CharField(verbose_name='Фамилия', max_length=150)
     avatar = models.ImageField(
-        'Аватар',
+        verbose_name='Аватар',
         upload_to='users/avatars/',
         blank=True,
-        null=True
+        default='users/avatars/default_avatar.png'
     )
     
     USERNAME_FIELD = 'email'
@@ -25,20 +35,10 @@ class User(AbstractUser):
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
-        ordering = ('id',)
+        ordering = ('username',)
     
     def __str__(self):
         return self.email
-        
-    def clean(self):
-        if User.objects.filter(email=self.email).exclude(pk=self.pk).exists():
-            raise ValidationError({'email': 'Этот email уже используется.'})
-        
-    def get_subscriptions(self):
-        return User.objects.filter(following__user=self)
-
-    def get_recipes_count(self):
-        return self.recipes.count()
 
 class Subscription(models.Model):
     """Модель подписки на авторов"""
