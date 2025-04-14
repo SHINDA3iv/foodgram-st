@@ -13,6 +13,7 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.pagination import LimitOffsetPagination
+from api.permissions import IsAuthorOrReadOnly
 
 from .serializers import *
 from recipes.models import *
@@ -24,6 +25,7 @@ from .pagination import MyPagination
 class MyUserViewSet(UserViewSet):
     queryset = User.objects.all()
     pagination_class = MyPagination
+    permission_classes =(IsAuthorOrReadOnly,)
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -33,6 +35,12 @@ class MyUserViewSet(UserViewSet):
         elif self.action in ['me', 'subscriptions', 'subscribe']:
             return UserWithRecipesSerializer
         return MyUserSerializer
+    
+    @action(detail=False, methods=['get'], 
+            permission_classes=[IsAuthenticated])
+    def me(self, request):
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
     
     @action(detail=False, methods=['put', 'delete'], 
             permission_classes=[IsAuthenticated],
@@ -59,13 +67,6 @@ class MyUserViewSet(UserViewSet):
             user.avatar.delete()
             user.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    @action(detail=False, methods=['get'], 
-            permission_classes=[IsAuthenticated])
-    def me(self, request):
-        serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
-    
     
     @action(detail=True, methods=['post', 'delete'],
             permission_classes=[IsAuthenticated])

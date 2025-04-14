@@ -157,7 +157,7 @@ class RecipeMinifiedSerializer(serializers.ModelSerializer):
 
 class RecipeSerializer(serializers.ModelSerializer):
     """Основной сериализатор рецептов"""
-    author = UserSerializer(read_only=True)
+    author = MyUserSerializer(read_only=True)
     ingredients = IngredientAmountSerializer(many=True)
     image = MyBase64ImageField(required=False, allow_null=True)
     is_favorited = serializers.SerializerMethodField()
