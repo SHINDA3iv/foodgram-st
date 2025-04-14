@@ -1,12 +1,12 @@
-# api/serializers.py
-
 from rest_framework import serializers
 from recipes.models import Recipe, Ingredient, IngredientAmount, Favorite, ShoppingCart
 from users.models import User, Subscription
 from django.core.files.base import ContentFile
 import base64
+from drf_extra_fields.fields import Base64ImageField
+from djoser.serializers import  UserSerializer, UserCreateSerializer
 
-class Base64ImageField(serializers.ImageField):
+class MyBase64ImageField(serializers.ImageField):
     """Кастомное поле для обработки изображений в base64"""
     def to_internal_value(self, data):
         if isinstance(data, str) and data.startswith('data:image'):
@@ -15,8 +15,9 @@ class Base64ImageField(serializers.ImageField):
             return ContentFile(base64.b64decode(imgstr), name=f'temp.{ext}')
         return super().to_internal_value(data)
 
-class UserSerializer(serializers.ModelSerializer):
+class MyUserSerializer(UserSerializer):
     """Сериализатор пользователя"""
+    avatar = MyBase64ImageField(required=False)
     is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
@@ -26,17 +27,25 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_is_subscribed(self, obj):
         user = self.context.get('request').user
-        return (user.is_authenticated and 
-                Subscription.objects.filter(user=user, author=obj).exists())
+        if user.is_authenticated:
+            return obj.following.filter(user=user).exists()
+        return False
 
-class UserCreateSerializer(UserSerializer):
+class MyUserCreateSerializer(UserCreateSerializer):
     """Сериализатор создания пользователя"""
-    password = serializers.CharField(write_only=True)
+    first_name = serializers.CharField(max_length=150, required=True)
+    last_name = serializers.CharField(max_length=150, required=True)
     
-    class Meta(UserSerializer.Meta):
+    class Meta:
+        model = User
         fields = ('email', 'id', 'username', 'first_name',
-                  'last_name', 'password', 'avatar')
+                  'last_name', 'password')
         extra_kwargs = {'password': {'write_only': True}}
+
+    def validate_username(self, value):
+        if len(value) > 150:
+            raise serializers.ValidationError('Username слишком длинный')
+        return value
 
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -65,7 +74,7 @@ class UserWithRecipesSerializer(UserSerializer):
     def get_recipes_count(self, obj):
         return obj.recipes.count()
 
-class SubscriptionSerializer(serializers.ModelSerializer):
+class SubscriptionSerializer(MyUserSerializer):
     """Сериализатор подписок"""
     class Meta:
         model = Subscription
@@ -125,7 +134,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     """Основной сериализатор рецептов"""
     author = UserSerializer(read_only=True)
     ingredients = IngredientAmountSerializer(many=True)
-    image = Base64ImageField(required=False, allow_null=True)
+    image = MyBase64ImageField(required=False, allow_null=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
 
@@ -148,7 +157,7 @@ class RecipeSerializer(serializers.ModelSerializer):
 class RecipeCreateUpdateSerializer(RecipeSerializer):
     """Сериализатор создания/обновления рецепта"""
     ingredients = serializers.ListField(write_only=True)
-    image = Base64ImageField()
+    image = MyBase64ImageField()
     
     class Meta(RecipeSerializer.Meta):
         read_only_fields = ('author',)

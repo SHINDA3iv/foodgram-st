@@ -1,35 +1,50 @@
 from rest_framework import viewsets, status
-from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Sum
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import SearchFilter
+from django.shortcuts import get_object_or_404
+from djoser.views import UserViewSet
+from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination
+from rest_framework.permissions import (
+    AllowAny, IsAuthenticatedOrReadOnly, IsAuthenticated
+)
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.pagination import LimitOffsetPagination
+
 from .serializers import *
 from recipes.models import *
 from users.models import *
 from .permissions import IsAuthorOrReadOnly
 from .filters import RecipeFilter, IngredientFilter
-from .pagination import RecipePagination
+from .pagination import MyPagination
 
-class UserViewSet(viewsets.ModelViewSet):
+class MyUserViewSet(UserViewSet):
     queryset = User.objects.all()
-    pagination_class = RecipePagination
-    filter_backends = (SearchFilter,)
-    search_fields = ('username', 'email')
+    pagination_class = MyPagination
+    serializer_class = MyUserSerializer
     
     def get_serializer_class(self):
         if self.action == 'create':
-            return UserCreateSerializer
+            return MyUserCreateSerializer
         elif self.action in ['subscriptions', 'subscribe']:
             return UserWithRecipesSerializer
-        return UserSerializer
+        return MyUserSerializer
     
     @action(detail=False, methods=['get'], 
             permission_classes=[IsAuthenticated])
     def me(self, request):
         serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['put'], permission_classes=[IsAuthenticated])
+    def set_avatar(self, request):
+        user = request.user
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)
     
     @action(detail=True, methods=['post', 'delete'],
@@ -53,12 +68,14 @@ class UserViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'], 
             permission_classes=[IsAuthenticated],
-            pagination_class=RecipePagination)
+            pagination_class=MyPagination,
+            url_path='subscriptions',
+            url_name='subscriptions')
     def subscriptions(self, request):
         queryset = User.objects.filter(following__user=request.user)
         page = self.paginate_queryset(queryset)
         if page is not None:
-            serializer = self.get_serializer(page, many=True)
+            serializer = SubscriptionSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
@@ -72,7 +89,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    pagination_class = RecipePagination
+    pagination_class = MyPagination
     permission_classes = [IsAuthorOrReadOnly]
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
