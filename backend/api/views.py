@@ -34,25 +34,25 @@ class MyUserViewSet(UserViewSet):
             return UserWithRecipesSerializer
         return MyUserSerializer
     
-    @action(detail=False, methods=['put'], 
-            permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['put', 'delete'], 
+            permission_classes=[IsAuthenticated],
+            url_path='me/avatar', url_name='avatar')
+    def avatar(self, request):
+        if request.method == 'PUT':
+            return self.set_avatar(request)
+        return self.delete_avatar(request)
+    
     def set_avatar(self, request):
         user = request.user
-        serializer = self.get_serializer(user, data=request.data)
+        serializer = AvatarResponseSerializer(user, data=request.data)
         serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        if 'avatar' not in serializer.validated_data:
+            raise serializers.ValidationError("Поле 'avatar' обязательно.")
         
-        # Сохраняем изображение
-        avatar = serializer.validated_data['avatar']
-        user.avatar.save(avatar.name, avatar)
-        user.save()
-        
-        response_serializer = AvatarResponseSerializer(
-            user, context={'request': request}
-        )
-        return Response(response_serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
-    @action(detail=False, methods=['delete'], 
-            permission_classes=[IsAuthenticated])
     def delete_avatar(self, request):
         user = request.user
         if user.avatar:

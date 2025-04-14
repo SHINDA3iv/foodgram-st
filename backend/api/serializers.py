@@ -10,9 +10,12 @@ class MyBase64ImageField(serializers.ImageField):
     """Кастомное поле для обработки изображений в base64"""
     def to_internal_value(self, data):
         if isinstance(data, str) and data.startswith('data:image'):
-            format, imgstr = data.split(';base64,')
-            ext = format.split('/')[-1]
-            return ContentFile(base64.b64decode(imgstr), name=f'temp.{ext}')
+            try:
+                format, imgstr = data.split(';base64,')
+                ext = format.split('/')[-1]
+                return ContentFile(base64.b64decode(imgstr), name=f'temp.{ext}')
+            except Exception:
+                raise serializers.ValidationError("Некорректный формат изображения.")
         return super().to_internal_value(data)
 
 class MyUserSerializer(UserSerializer):
@@ -62,7 +65,7 @@ class AvatarSerializer(serializers.ModelSerializer):
         fields = ('avatar',)
 
 class AvatarResponseSerializer(serializers.ModelSerializer):
-    avatar = serializers.SerializerMethodField()
+    avatar = MyBase64ImageField()
 
     class Meta:
         model = User
@@ -70,7 +73,10 @@ class AvatarResponseSerializer(serializers.ModelSerializer):
 
     def get_avatar(self, obj):
         if obj.avatar:
-            return self.context['request'].build_absolute_uri(obj.avatar.url)
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.avatar.url)
+            return obj.avatar.url  
         return None
 
 class UserWithRecipesSerializer(UserSerializer):
