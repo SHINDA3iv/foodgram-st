@@ -24,28 +24,48 @@ from .pagination import MyPagination
 class MyUserViewSet(UserViewSet):
     queryset = User.objects.all()
     pagination_class = MyPagination
-    serializer_class = MyUserSerializer
     
     def get_serializer_class(self):
         if self.action == 'create':
             return MyUserCreateSerializer
-        elif self.action in ['subscriptions', 'subscribe']:
+        elif self.action in ['set_avatar', 'delete_avatar']:
+            return AvatarSerializer
+        elif self.action in ['me', 'subscriptions', 'subscribe']:
             return UserWithRecipesSerializer
         return MyUserSerializer
+    
+    @action(detail=False, methods=['put'], 
+            permission_classes=[IsAuthenticated])
+    def set_avatar(self, request):
+        user = request.user
+        serializer = self.get_serializer(user, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Сохраняем изображение
+        avatar = serializer.validated_data['avatar']
+        user.avatar.save(avatar.name, avatar)
+        user.save()
+        
+        response_serializer = AvatarResponseSerializer(
+            user, context={'request': request}
+        )
+        return Response(response_serializer.data)
+    
+    @action(detail=False, methods=['delete'], 
+            permission_classes=[IsAuthenticated])
+    def delete_avatar(self, request):
+        user = request.user
+        if user.avatar:
+            user.avatar.delete()
+            user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=False, methods=['get'], 
             permission_classes=[IsAuthenticated])
     def me(self, request):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
-
-    @action(detail=False, methods=['put'], permission_classes=[IsAuthenticated])
-    def set_avatar(self, request):
-        user = request.user
-        serializer = self.get_serializer(user, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+    
     
     @action(detail=True, methods=['post', 'delete'],
             permission_classes=[IsAuthenticated])
@@ -85,6 +105,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = IngredientSerializer
     filter_backends = (DjangoFilterBackend,)
     filterset_class = IngredientFilter
+    permission_classes=(AllowAny,)
     pagination_class = None
 
 class RecipeViewSet(viewsets.ModelViewSet):

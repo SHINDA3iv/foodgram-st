@@ -54,6 +54,25 @@ class MyUserCreateSerializer(UserCreateSerializer):
         user.save()
         return user
 
+class AvatarSerializer(serializers.ModelSerializer):
+    avatar = MyBase64ImageField(required=True)
+
+    class Meta:
+        model = User
+        fields = ('avatar',)
+
+class AvatarResponseSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ('avatar',)
+
+    def get_avatar(self, obj):
+        if obj.avatar:
+            return self.context['request'].build_absolute_uri(obj.avatar.url)
+        return None
+
 class UserWithRecipesSerializer(UserSerializer):
     """Сериализатор пользователя с рецептами"""
     recipes = serializers.SerializerMethodField()

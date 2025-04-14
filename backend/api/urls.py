@@ -12,4 +12,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),
+    path('users/me/avatar/', MyUserViewSet.as_view({'put': 'set_avatar'}), name='set-avatar'),
+    path('users/me/avatar/delete/', MyUserViewSet.as_view({'delete': 'delete_avatar'}), name='delete-avatar'),
 ]
