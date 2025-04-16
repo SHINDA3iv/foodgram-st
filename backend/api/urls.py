@@ -1,7 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import *
-from djoser.views import TokenCreateView, TokenDestroyView
 
 router = DefaultRouter()
 router.register('users', MyUserViewSet, basename='users')

@@ -10,12 +10,9 @@ class MyBase64ImageField(serializers.ImageField):
     """Кастомное поле для обработки изображений в base64"""
     def to_internal_value(self, data):
         if isinstance(data, str) and data.startswith('data:image'):
-            try:
-                format, imgstr = data.split(';base64,')
-                ext = format.split('/')[-1]
-                return ContentFile(base64.b64decode(imgstr), name=f'temp.{ext}')
-            except Exception:
-                raise serializers.ValidationError("Некорректный формат изображения.")
+            format, imgstr = data.split(';base64,')
+            ext = format.split('/')[-1]
+            data = ContentFile(base64.b64decode(imgstr), name='temp.' + ext)
         return super().to_internal_value(data)
 
 class MyUserSerializer(UserSerializer):
@@ -134,7 +131,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     """Основной сериализатор рецептов"""
     author = MyUserSerializer(read_only=True)
     ingredients = IngredientAmountSerializer(source='recipe_ingredients', many=True)
-    image = MyBase64ImageField(required=False, allow_null=True)
+    image = MyBase64ImageField()
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
 
@@ -153,37 +150,17 @@ class RecipeSerializer(serializers.ModelSerializer):
         user = self.context.get('request').user
         return (user.is_authenticated and 
                 ShoppingCart.objects.filter(user=user, recipe=obj).exists())
-    
-class CreateIngredientSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    amount = serializers.IntegerField()
-
-    class Meta:
-        fields = ("id", "amount")
-
-    def validate_id(self, value):
-        ingredient = Ingredient.objects.filter(pk=value)
-
-        if not ingredient.exists():
-            raise serializers.ValidationError(
-                {"id": "Недействительный идентификатор"}
-            )
-
-        return value
 
 class RecipeCreateUpdateSerializer(RecipeSerializer):
     """Сериализатор создания/обновления рецепта"""
-    ingredients = CreateIngredientSerializer(many=True, write_only=True)
-    image = MyBase64ImageField()
-    
     class Meta(RecipeSerializer.Meta):
-        read_only_fields = ('author',)
+        read_only_fields = ('author', )
 
     def validate_ingredients(self, value):
         if not value:
             raise serializers.ValidationError('Нужен хотя бы один ингредиент')
-        ingredient_ids = [item['id'] for item in value]
-        if len(ingredient_ids) != len(set(ingredient_ids)):
+        ingredient_id = [item['ingredient']['id'] for item in value]
+        if len(ingredient_id) != len(set(ingredient_id)):
             raise serializers.ValidationError('Ингредиенты не должны повторяться')
         return value
 
@@ -193,26 +170,40 @@ class RecipeCreateUpdateSerializer(RecipeSerializer):
             ingredient_amounts.append(
                 IngredientAmount(
                     recipe=recipe,
-                    # ingredient=ingredient['ingredient']['id'],
-                    ingredient_id=ingredient['id'],
+                    ingredient=ingredient['ingredient']['id'],
                     amount=ingredient['amount']
                 )
             )
         IngredientAmount.objects.bulk_create(ingredient_amounts)
     
     def create(self, validated_data):
-        ingredients = validated_data.pop("ingredients")
+        ingredients = validated_data.pop("recipe_ingredients")
         recipe = Recipe.objects.create(**validated_data)
         self.create_ingredients(recipe, ingredients)
         return recipe
     
     def update(self, instance, validated_data):
-        ingredients_data = validated_data.get('ingredients', None)
-        instance = super().update(instance, validated_data)
-        if ingredients_data is not None:
-            instance.ingredients.clear()
-            self.create_ingredients(instance, ingredients_data)
-        return instance
+        ingredients_data = validated_data.pop('recipe_ingredients', None)
+        
+        if ingredients_data is None:
+            raise serializers.ValidationError({
+                'ingredients': 'Это поле обязательно для заполнения.'
+            })
+    
+        instance.ingredients.clear()
+        self.create_ingredients(instance, ingredients_data)
+        
+        return super().update(instance, validated_data)
+
+    def _check_existence(self, model, recipe):
+        request = self.context.get('request')
+        return (
+            request.user.is_authenticated
+            and model.objects.filter(
+                user=request.user,
+                recipe=recipe
+            ).exists()
+        )
 
 class FavoriteSerializer(serializers.ModelSerializer):
     """Сериализатор избранного"""

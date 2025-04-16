@@ -1,27 +1,21 @@
 from rest_framework import viewsets, status
+from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import (AllowAny, IsAuthenticated)
 from django.db.models import Sum
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from djoser.serializers import SetPasswordSerializer
-from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination
-from rest_framework.permissions import (
-    AllowAny, IsAuthenticatedOrReadOnly, IsAuthenticated
-)
-from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.pagination import LimitOffsetPagination
-from api.permissions import IsAuthorOrReadOnly
 
-from .serializers import *
 from recipes.models import *
 from users.models import *
+from .serializers import *
 from .permissions import IsAuthorOrReadOnly
 from .filters import RecipeFilter, IngredientFilter
 from .pagination import MyPagination
+from .permissions import IsAuthorOrReadOnly
 
 class MyUserViewSet(UserViewSet):
     queryset = User.objects.all()
@@ -127,6 +121,21 @@ class RecipeViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    @action(
+        detail=True,
+        methods=("get",),
+        url_path="get-link",
+        url_name="get-link",
+    )
+    def get_short_link(self, request, pk):
+        url = f"{request.get_host()}/s/{pk}"
+        print(url)
+        return Response(
+            data={
+                "short-link": url
+            }
+        )
     
     @action(detail=True, methods=['post', 'delete'],
             permission_classes=[IsAuthenticated])
