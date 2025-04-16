@@ -16,6 +16,13 @@ class Ingredient(models.Model):
     class Meta:
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'measurement_unit'],
+                name='unique_name_measurement_unit'
+            )
+        ]
+        ordering = ('name',)
 
     def __str__(self):
         return f'{self.name} ({self.measurement_unit})'
@@ -34,7 +41,7 @@ class Recipe(models.Model):
         verbose_name='Название'
     )
     image = models.ImageField(
-        upload_to='recipes/',
+        upload_to='recipes/images/',
         verbose_name='Изображение'
     )
     text = models.TextField(
@@ -58,6 +65,7 @@ class Recipe(models.Model):
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
         ordering = ('-pub_date',)
+        default_related_name = 'recipes'
 
     def __str__(self):
         return self.name
@@ -68,7 +76,6 @@ class IngredientAmount(models.Model):
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='ingredient_amounts',
         verbose_name='Рецепт'
     )
     ingredient = models.ForeignKey(
@@ -90,6 +97,7 @@ class IngredientAmount(models.Model):
                 name='unique_ingredient_in_recipe'
             )
         ]
+        default_related_name = 'recipe_ingredients'
 
     def __str__(self):
         return f'{self.ingredient} в {self.recipe}'
