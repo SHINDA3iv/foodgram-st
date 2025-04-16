@@ -35,27 +35,12 @@ class MyUserSerializer(UserSerializer):
         return False
 
 class MyUserCreateSerializer(UserCreateSerializer):
-    """Сериализатор создания пользователя"""
-    first_name = serializers.CharField(max_length=150, required=True)
-    last_name = serializers.CharField(max_length=150, required=True)
-    
+    """Сериализатор создания пользователя"""    
     class Meta:
         model = User
         fields = ('email', 'id', 'username', 'first_name',
                   'last_name', 'password')
         extra_kwargs = {'password': {'write_only': True}}
-
-    def validate_username(self, value):
-        if len(value) > 150:
-            raise serializers.ValidationError('Username слишком длинный')
-        return value
-
-    def create(self, validated_data):
-        password = validated_data.pop('password')
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
 
 class AvatarSerializer(serializers.ModelSerializer):
     avatar = MyBase64ImageField(required=True)
@@ -208,6 +193,7 @@ class RecipeCreateUpdateSerializer(RecipeSerializer):
             ingredient_amounts.append(
                 IngredientAmount(
                     recipe=recipe,
+                    # ingredient=ingredient['ingredient']['id'],
                     ingredient_id=ingredient['id'],
                     amount=ingredient['amount']
                 )

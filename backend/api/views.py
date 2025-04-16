@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
+from djoser.serializers import SetPasswordSerializer
 from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination
 from rest_framework.permissions import (
     AllowAny, IsAuthenticatedOrReadOnly, IsAuthenticated
@@ -28,12 +29,15 @@ class MyUserViewSet(UserViewSet):
     permission_classes =(IsAuthorOrReadOnly,)
     
     def get_serializer_class(self):
-        if self.action == 'create':
+        print(self.action)
+        if self.action in ['create']:
             return MyUserCreateSerializer
         elif self.action in ['set_avatar', 'delete_avatar']:
             return AvatarSerializer
-        elif self.action in ['me', 'subscriptions', 'subscribe']:
+        elif self.action in ['subscriptions', 'subscribe']:
             return UserWithRecipesSerializer
+        if self.action in ['set_password']:
+            return SetPasswordSerializer
         return MyUserSerializer
     
     @action(detail=False, methods=['get'], 
