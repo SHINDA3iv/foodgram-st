@@ -204,12 +204,26 @@ class RecipeCreateUpdateSerializer(RecipeSerializer):
                 recipe=recipe
             ).exists()
         )
+    
+class RecipeMinifiedSerializer(serializers.ModelSerializer):
+    """Минимизированный сериализатор рецепта (для избранного и корзины)."""
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'image', 'cooking_time')
+
+    def get_image(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        return None
 
 class FavoriteSerializer(serializers.ModelSerializer):
     """Сериализатор избранного"""
     class Meta:
         model = Favorite
-        fields = ('user', 'recipe')
+        fields = ('id', 'user', 'recipe') 
         extra_kwargs = {
             'user': {'write_only': True},
             'recipe': {'write_only': True}
@@ -223,12 +237,13 @@ class FavoriteSerializer(serializers.ModelSerializer):
         return data
 
     def to_representation(self, instance):
-        return RecipeSerializer(instance.recipe).data
+        return RecipeMinifiedSerializer(instance.recipe, context=self.context).data
 
-class ShoppingCartSerializer(FavoriteSerializer):
+class ShoppingCartSerializer(serializers.ModelSerializer):
     """Сериализатор списка покупок"""
-    class Meta(FavoriteSerializer.Meta):
+    class Meta:
         model = ShoppingCart
+        fields = ('id', 'user', 'recipe')
 
     def validate(self, data):
         user = data['user']
@@ -236,6 +251,9 @@ class ShoppingCartSerializer(FavoriteSerializer):
         if ShoppingCart.objects.filter(user=user, recipe=recipe).exists():
             raise serializers.ValidationError('Этот рецепт уже есть в списке покупок')
         return data
+    
+    def to_representation(self, instance):
+        return RecipeMinifiedSerializer(instance.recipe, context=self.context).data
 
 class ShoppingCartDownloadSerializer(serializers.Serializer):
     """Сериализатор скачивания списка покупок"""

@@ -120,6 +120,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filterset_class = RecipeFilter
     
     def get_serializer_class(self):
+        print(self.action)
         if self.action in ['create', 'update', 'partial_update']:
             return RecipeCreateUpdateSerializer
         return RecipeSerializer
@@ -142,10 +143,21 @@ class RecipeViewSet(viewsets.ModelViewSet):
             }
         )
     
-    @action(detail=True, methods=['post', 'delete'],
-            permission_classes=[IsAuthenticated])
-    def favorite(self, request, pk=None):
+    @action(detail=True, methods=('post', 'delete',),
+        permission_classes=[IsAuthenticated],
+        url_path="favorite",
+        url_name="favorite",)
+    def favorite(self, request, pk):
+        if not request.user.is_authenticated:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+            
         recipe = self.get_object()
+        
+        if request.method == 'GET':
+            favorite = get_object_or_404(Favorite, user=request.user, recipe__id=pk)
+            serializer = FavoriteSerializer(favorite, context={'request': request})
+            return Response(serializer.data)
+        
         if request.method == 'POST':
             serializer = FavoriteSerializer(
                 data={'user': request.user.id, 'recipe': recipe.id},
@@ -159,10 +171,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
         favorite.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-    @action(detail=True, methods=['post', 'delete'],
-            permission_classes=[IsAuthenticated])
-    def shopping_cart(self, request, pk=None):
+    @action(detail=True, methods=('post', 'delete',),
+            permission_classes=[IsAuthenticated],
+            url_path="shopping_cart",
+            url_name="shopping_cart",)
+    def shopping_cart(self, request, pk):
         recipe = self.get_object()
+        print("method")
         if request.method == 'POST':
             serializer = ShoppingCartSerializer(
                 data={'user': request.user.id, 'recipe': recipe.id},
@@ -177,7 +192,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=False, methods=['get'],
-            permission_classes=[IsAuthenticated])
+            permission_classes=[IsAuthenticated],
+            url_path='download_shopping_cart',
+            url_name='download_shopping_cart')
     def download_shopping_cart(self, request):
         ingredients = IngredientAmount.objects.filter(
             recipe__in_shopping_cart__user=request.user
