@@ -82,6 +82,9 @@ class MyUserViewSet(UserViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         subscription = Subscription.objects.filter(user=user, author=author)
+        if not subscription.exists():
+            raise serializers.ValidationError("Вы не подписаны на этого пользователя.")
+    
         subscription.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
@@ -147,16 +150,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=[IsAuthenticated],
         url_path="favorite",
         url_name="favorite",)
-    def favorite(self, request, pk):
-        if not request.user.is_authenticated:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
-            
+    def favorite(self, request, pk):            
         recipe = self.get_object()
-        
-        if request.method == 'GET':
-            favorite = get_object_or_404(Favorite, user=request.user, recipe__id=pk)
-            serializer = FavoriteSerializer(favorite, context={'request': request})
-            return Response(serializer.data)
         
         if request.method == 'POST':
             serializer = FavoriteSerializer(
@@ -168,6 +163,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         favorite = Favorite.objects.filter(user=request.user, recipe=recipe)
+        if not favorite.exists():
+            raise serializers.ValidationError("Этот рецепт не находится в вашем избранном.")
+        
         favorite.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
@@ -188,6 +186,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         cart_item = ShoppingCart.objects.filter(user=request.user, recipe=recipe)
+        if not cart_item.exists():
+            raise serializers.ValidationError("Этот рецепт не находится в вашей корзине.")
+
         cart_item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
