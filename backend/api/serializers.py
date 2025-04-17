@@ -61,12 +61,12 @@ class AvatarResponseSerializer(serializers.ModelSerializer):
             return obj.avatar.url  
         return None
 
-class UserWithRecipesSerializer(UserSerializer):
+class UserWithRecipesSerializer(MyUserSerializer):
     """Сериализатор пользователя с рецептами"""
     recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
 
-    class Meta(UserSerializer.Meta):
+    class Meta(MyUserSerializer.Meta):
         fields = ('email', 'id', 'username', 'first_name', 
                   'last_name', 'avatar', 'is_subscribed', 
                   'recipes', 'recipes_count')
@@ -81,7 +81,7 @@ class UserWithRecipesSerializer(UserSerializer):
     def get_recipes_count(self, obj):
         return obj.recipes.count()
 
-class SubscriptionSerializer(MyUserSerializer):
+class SubscriptionSerializer(serializers.ModelSerializer):
     """Сериализатор подписок"""
     class Meta:
         model = Subscription
@@ -96,7 +96,7 @@ class SubscriptionSerializer(MyUserSerializer):
         author = data['author']
         if user == author:
             raise serializers.ValidationError(
-                'Нельзя подписаться на самого себя'
+                'Нельзя подписаться на самого себя' 
             )
         if Subscription.objects.filter(user=user, author=author).exists():
             raise serializers.ValidationError(

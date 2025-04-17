@@ -68,7 +68,7 @@ class MyUserViewSet(UserViewSet):
     
     @action(detail=True, methods=['post', 'delete'],
             permission_classes=[IsAuthenticated])
-    def subscribe(self, request, pk=None):
+    def subscribe(self, request, id=None):
         author = self.get_object()
         user = request.user
         
@@ -91,12 +91,17 @@ class MyUserViewSet(UserViewSet):
             url_path='subscriptions',
             url_name='subscriptions')
     def subscriptions(self, request):
-        queryset = User.objects.filter(following__user=request.user)
+        queryset = Subscription.objects.filter(user=request.user)
         page = self.paginate_queryset(queryset)
         if page is not None:
-            serializer = SubscriptionSerializer(page, many=True)
+            serializer = SubscriptionSerializer(
+                page, many=True, context={'request': request}
+            )
             return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True)
+
+        serializer = SubscriptionSerializer(
+            queryset, many=True, context={'request': request}
+        )
         return Response(serializer.data)
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
