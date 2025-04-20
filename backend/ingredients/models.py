@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Ingredient(models.Model):
     """Модель ингредиентов"""
     name = models.CharField(
@@ -21,6 +22,6 @@ class Ingredient(models.Model):
             )
         ]
         ordering = ('name',)
-        
+
     def __str__(self):
         return f'{self.name} ({self.measurement_unit})'

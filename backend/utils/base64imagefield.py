@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.core.files.base import ContentFile
 import base64
 
+
 class MyBase64ImageField(serializers.ImageField):
     """Кастомное поле для обработки изображений в base64"""
 

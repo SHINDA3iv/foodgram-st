@@ -153,7 +153,7 @@ DJOSER = {
         'user': ['djoser.permissions.CurrentUserOrAdmin'],
         'user_list': ['rest_framework.permissions.IsAuthenticatedOrReadOnly']
     },
-    "HIDE_USERS" : False,
+    "HIDE_USERS": False,
 }
 
 AUTHENTICATION_BACKENDS = (

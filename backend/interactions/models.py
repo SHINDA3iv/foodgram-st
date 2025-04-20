@@ -3,8 +3,9 @@ from django.db import models
 from users.models import User
 from recipes.models import Recipe
 
+
 class BaseInteractionModel(models.Model):
-    """Базовая абстрактная модель для взаимодействий пользователя с рецептом."""
+    """Абстрактная модель для взаимодействий пользователя с рецептом."""
     class Meta:
         abstract = True
         constraints = [
@@ -58,4 +59,3 @@ class ShoppingCart(BaseInteractionModel):
     class Meta(BaseInteractionModel.Meta):
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
-    

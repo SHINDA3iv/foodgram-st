@@ -1,7 +1,7 @@
-from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.core.exceptions import ValidationError
+from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
+
 
 class User(AbstractUser):
     """Кастомная модель пользователя"""
@@ -12,7 +12,8 @@ class User(AbstractUser):
     )
     username_validator = RegexValidator(
         regex=r'^[\w.@+-]+$',
-        message='Введите корректное имя пользователя. Может содержать только буквы, цифры и символы @/./+/-/_'
+        message=("Введите корректное имя пользователя. "
+                 "Может содержать только буквы, цифры и символы @/./+/-/_")
     )
     username = models.CharField(
         verbose_name='Уникальный юзернейм',
@@ -27,18 +28,18 @@ class User(AbstractUser):
         upload_to='users/avatars/',
         blank=True
     )
-    
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
-    
+
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
         ordering = ('username',)
-    
+
     def __str__(self):
         return self.email
-        
+
     def is_subscribed(self, user):
         return self.following.filter(user=user).exists()
 
@@ -57,7 +58,7 @@ class Subscription(models.Model):
         related_name='following',
         verbose_name='Автор'
     )
-    
+
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
@@ -71,6 +72,6 @@ class Subscription(models.Model):
                 name='prevent_self_subscription'
             )
         ]
-    
+
     def __str__(self):
         return f'{self.user} подписан на {self.author}'
