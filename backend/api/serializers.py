@@ -26,10 +26,10 @@ class MyUserSerializer(UserSerializer):
                   'last_name', 'avatar', 'is_subscribed')
 
     def get_is_subscribed(self, obj):
-        user = self.context.get('request').user
-        if user.is_authenticated:
-            return obj.following.filter(user=user).exists()
-        return False
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.following.filter(user=request.user).exists()
 
 class MyUserCreateSerializer(UserCreateSerializer):
     """Сериализатор создания пользователя"""    
@@ -75,8 +75,12 @@ class UserWithRecipesSerializer(MyUserSerializer):
         limit = self.context['request'].query_params.get('recipes_limit')
         recipes = obj.recipes.all()
         if limit:
-            recipes = recipes[:int(limit)]
-        return RecipeSerializer(recipes, many=True).data
+            try:
+                limit = int(limit)
+                recipes = recipes[:limit]
+            except (ValueError, TypeError):
+                pass
+        return RecipeMinifiedSerializer(recipes, many=True, context=self.context).data
 
     def get_recipes_count(self, obj):
         return obj.recipes.count()
