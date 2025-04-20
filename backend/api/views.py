@@ -1,29 +1,23 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.permissions import (AllowAny, IsAuthenticated)
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from django.db.models import Sum
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
-from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from djoser.serializers import SetPasswordSerializer
 
-from recipes.models import *
-from users.models import *
 from .serializers import *
-from .permissions import IsAuthorOrReadOnly
-from .filters import RecipeFilter, IngredientFilter
-from .pagination import MyPagination
-from .permissions import IsAuthorOrReadOnly
+from utils.filters import RecipeFilter
+from utils.permissions import IsUserOrReadOnly
 
 class MyUserViewSet(UserViewSet):
     queryset = User.objects.all()
-    pagination_class = MyPagination
-    permission_classes =(IsAuthorOrReadOnly,)
+    permission_classes = [IsUserOrReadOnly]
     
     def get_serializer_class(self):
-        print(self.action)
         if self.action in ['create']:
             return MyUserCreateSerializer
         elif self.action in ['set_avatar', 'delete_avatar']:
@@ -90,7 +84,6 @@ class MyUserViewSet(UserViewSet):
     
     @action(detail=False, methods=['get'], 
             permission_classes=[IsAuthenticated],
-            pagination_class=MyPagination,
             url_path='subscriptions',
             url_name='subscriptions')
     def subscriptions(self, request):
@@ -110,25 +103,26 @@ class MyUserViewSet(UserViewSet):
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filterset_class = IngredientFilter
-    permission_classes=(AllowAny,)
+    filter_backends = (DjangoFilterBackend,filters.SearchFilter,)
+    filterset_fields = ('name',)
+    search_fields = ('^name',)
+    permission_classes=[AllowAny]
     pagination_class = None
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    pagination_class = MyPagination
-    permission_classes = [IsAuthorOrReadOnly]
+    permission_classes = [IsUserOrReadOnly]
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
     
     def get_serializer_class(self):
-        print(self.action)
         if self.action in ['create', 'update', 'partial_update']:
             return RecipeCreateUpdateSerializer
         return RecipeSerializer
     
     def perform_create(self, serializer):
+        if not self.request.user.is_authenticated:
+            raise PermissionDenied("Authentication credentials were not provided.")
         serializer.save(author=self.request.user)
 
     @action(
@@ -139,7 +133,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def get_short_link(self, request, pk):
         url = f"{request.get_host()}/s/{pk}"
-        print(url)
         return Response(
             data={
                 "short-link": url
@@ -175,7 +168,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
             url_name="shopping_cart",)
     def shopping_cart(self, request, pk):
         recipe = self.get_object()
-        print("method")
         if request.method == 'POST':
             serializer = ShoppingCartSerializer(
                 data={'user': request.user.id, 'recipe': recipe.id},
@@ -197,7 +189,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             url_path='download_shopping_cart',
             url_name='download_shopping_cart')
     def download_shopping_cart(self, request):
-        ingredients = IngredientAmount.objects.filter(
+        ingredients = RecipeIngredients.objects.filter(
             recipe__in_shopping_cart__user=request.user
         ).values(
             'ingredient__name', 'ingredient__measurement_unit'

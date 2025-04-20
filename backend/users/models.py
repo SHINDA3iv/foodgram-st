@@ -5,14 +5,14 @@ from django.core.validators import RegexValidator
 
 class User(AbstractUser):
     """Кастомная модель пользователя"""
-    username_validator = RegexValidator(
-        regex=r'^[\w.@+-]+$',
-        message='Введите корректное имя пользователя. Может содержать только буквы, цифры и символы @/./+/-/_'
-    )
     email = models.EmailField(
         verbose_name='Адрес электронной почты',
         max_length=254,
         unique=True
+    )
+    username_validator = RegexValidator(
+        regex=r'^[\w.@+-]+$',
+        message='Введите корректное имя пользователя. Может содержать только буквы, цифры и символы @/./+/-/_'
     )
     username = models.CharField(
         verbose_name='Уникальный юзернейм',
@@ -25,8 +25,7 @@ class User(AbstractUser):
     avatar = models.ImageField(
         verbose_name='Аватар',
         upload_to='users/avatars/',
-        blank=True,
-        default='users/avatars/default_avatar.png'
+        blank=True
     )
     
     USERNAME_FIELD = 'email'
@@ -39,6 +38,7 @@ class User(AbstractUser):
     
     def __str__(self):
         return self.email
+
 
 class Subscription(models.Model):
     """Модель подписки на авторов"""
