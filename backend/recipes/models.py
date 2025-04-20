@@ -46,6 +46,12 @@ class Recipe(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def favorites_count(self):
+        return self.favorited_by.count()
+        
+    def in_shopping_carts_count(self):
+        return self.in_shopping_cart.count()
 
 
 class RecipeIngredients(models.Model):

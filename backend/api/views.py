@@ -158,7 +158,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
         favorite = Favorite.objects.filter(user=request.user, recipe=recipe)
         if not favorite.exists():
             raise serializers.ValidationError("Этот рецепт не находится в вашем избранном.")
-        
         favorite.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     

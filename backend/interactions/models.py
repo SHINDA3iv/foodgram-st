@@ -3,8 +3,24 @@ from django.db import models
 from users.models import User
 from recipes.models import Recipe
 
+class BaseInteractionModel(models.Model):
+    """Базовая абстрактная модель для взаимодействий пользователя с рецептом."""
+    class Meta:
+        abstract = True
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'recipe'],
+                name='%(app_label)s_%(class)s_unique_user_recipe'
+            )
+        ]
 
-class Favorite(models.Model):
+    @classmethod
+    def is_exists(cls, user, recipe):
+        """Проверяет существование взаимодействия."""
+        return cls.objects.filter(user=user, recipe=recipe).exists()
+
+
+class Favorite(BaseInteractionModel):
     """Модель избранного"""
     user = models.ForeignKey(
         User,
@@ -19,21 +35,12 @@ class Favorite(models.Model):
         verbose_name='Рецепт'
     )
 
-    class Meta:
+    class Meta(BaseInteractionModel.Meta):
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранное'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'recipe'],
-                name='unique_favorite'
-            )
-        ]
-        
-    def __str__(self):
-        return f'{self.recipe} в избранном у {self.user}'
 
 
-class ShoppingCart(models.Model):
+class ShoppingCart(BaseInteractionModel):
     """Модель списка покупок"""
     user = models.ForeignKey(
         User,
@@ -48,15 +55,7 @@ class ShoppingCart(models.Model):
         verbose_name='Рецепт'
     )
 
-    class Meta:
+    class Meta(BaseInteractionModel.Meta):
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'recipe'],
-                name='unique_shopping_cart'
-            )
-        ]
-
-    def __str__(self):
-        return f'{self.recipe} в списке покупок у {self.user}'
+    

@@ -27,11 +27,11 @@ class RecipeAdmin(admin.ModelAdmin):
     get_image.short_description = 'Миниатюра'
     
     def favorites_count(self, obj):
-        return obj.favorited_by.count()
+        return obj.favorites_count()
     favorites_count.short_description = 'В избранном'
     
     def in_shopping_carts_count(self, obj):
-        return obj.in_shopping_cart.count()
+        return obj.in_shopping_carts_count()
     in_shopping_carts_count.short_description = 'В списках покупок'
 
 

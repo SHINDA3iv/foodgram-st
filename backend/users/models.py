@@ -38,6 +38,9 @@ class User(AbstractUser):
     
     def __str__(self):
         return self.email
+        
+    def is_subscribed(self, user):
+        return self.following.filter(user=user).exists()
 
 
 class Subscription(models.Model):
@@ -71,7 +74,3 @@ class Subscription(models.Model):
     
     def __str__(self):
         return f'{self.user} подписан на {self.author}'
-        
-    def clean(self):
-        if self.user == self.author:
-            raise ValidationError('Нельзя подписаться на самого себя.')

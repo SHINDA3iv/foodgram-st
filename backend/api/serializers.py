@@ -19,10 +19,10 @@ class MyUserSerializer(UserSerializer):
                   'last_name', 'avatar', 'is_subscribed')
 
     def get_is_subscribed(self, obj):
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
+        user = self.context['request'].user
+        if not user or not user.is_authenticated:
             return False
-        return obj.following.filter(user=request.user).exists()
+        return obj.is_subscribed(user)
 
 
 class MyUserCreateSerializer(UserCreateSerializer):
@@ -231,8 +231,24 @@ class RecipeMinifiedSerializer(serializers.ModelSerializer):
         return None
 
 
-class FavoriteSerializer(serializers.ModelSerializer):
-    """Сериализатор избранного"""
+class BaseInteractionSerializer(serializers.ModelSerializer):
+    """Базовый сериализатор для избранного и списка покупок."""
+    def validate(self, data):
+        user = data['user']
+        recipe = data['recipe']
+        model = self.Meta.model
+        if model.is_exists(user, recipe):
+            raise serializers.ValidationError(
+                f'Этот рецепт уже есть в {model._meta.verbose_name}.'
+            )
+        return data
+
+    def to_representation(self, instance):
+        return RecipeMinifiedSerializer(instance.recipe, context=self.context).data
+
+
+class FavoriteSerializer(BaseInteractionSerializer):
+    """Сериализатор избранного."""
     class Meta:
         model = Favorite
         fields = ('id', 'user', 'recipe')
@@ -241,34 +257,12 @@ class FavoriteSerializer(serializers.ModelSerializer):
             'recipe': {'write_only': True}
         }
 
-    def validate(self, data):
-        user = data['user']
-        recipe = data['recipe']
-        if Favorite.objects.filter(user=user, recipe=recipe).exists():
-            raise serializers.ValidationError(
-                'Этот рецепт уже есть в избранном')
-        return data
 
-    def to_representation(self, instance):
-        return RecipeMinifiedSerializer(instance.recipe, context=self.context).data
-
-
-class ShoppingCartSerializer(serializers.ModelSerializer):
-    """Сериализатор списка покупок"""
+class ShoppingCartSerializer(BaseInteractionSerializer):
+    """Сериализатор списка покупок."""
     class Meta:
         model = ShoppingCart
         fields = ('id', 'user', 'recipe')
-
-    def validate(self, data):
-        user = data['user']
-        recipe = data['recipe']
-        if ShoppingCart.objects.filter(user=user, recipe=recipe).exists():
-            raise serializers.ValidationError(
-                'Этот рецепт уже есть в списке покупок')
-        return data
-
-    def to_representation(self, instance):
-        return RecipeMinifiedSerializer(instance.recipe, context=self.context).data
 
 
 class ShoppingCartDownloadSerializer(serializers.Serializer):
