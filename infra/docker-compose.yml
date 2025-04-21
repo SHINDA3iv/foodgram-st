@@ -6,10 +6,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     env_file: ./.env
-    environment:
-      - POSTGRES_DB=foodgram
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
 
   backend:
     container_name: foodgram-backend
@@ -20,15 +16,21 @@ services:
       - static_value:/app/static/
       - media_value:/app/media/
       - ../data:/app/data
+      - ./init-scripts:/app/init-scripts
     ports:
       - "8000:8000"
     depends_on:
       - db
     env_file: ./.env
-    command: bash -c "python manage.py collectstatic --noinput && \
-             python manage.py makemigrations && \
-             python manage.py migrate && \
-             gunicorn foodgram.wsgi:application --bind 0.0.0.0:8000"
+    command: >
+      bash -c "
+        python manage.py collectstatic --noinput &&
+        python manage.py makemigrations &&
+        python manage.py migrate &&
+        mkdir -p /app/data &&
+        python manage.py load_ingredients &&
+        gunicorn foodgram.wsgi:application --bind 0.0.0.0:8000
+      "
 
   frontend:
     container_name: foodgram-front
@@ -43,8 +45,6 @@ services:
     image: nginx:1.25.4-alpine
     ports:
       - "80:80"
-    environment:
-      - NGINX_HOST=localhost
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ../frontend/build:/usr/share/nginx/html/
