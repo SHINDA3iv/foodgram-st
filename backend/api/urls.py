@@ -3,9 +3,11 @@ from rest_framework.routers import DefaultRouter
 from .views import MyUserViewSet, IngredientViewSet, RecipeViewSet
 
 router = DefaultRouter()
-router.register('users', MyUserViewSet, basename='users')
-router.register('ingredients', IngredientViewSet, basename='ingredients')
-router.register('recipes', RecipeViewSet, basename='recipes')
+router.register(r'users', MyUserViewSet, basename='users')
+router.register(r'recipes', RecipeViewSet, basename='recipes')
+router.register(r'ingredients', IngredientViewSet, basename='ingredients')
+
+app_name = 'api'
 
 urlpatterns = [
     path('', include(router.urls)),
